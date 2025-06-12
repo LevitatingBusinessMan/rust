@@ -340,6 +340,10 @@ impl Command {
             cvt(libc::setpgid(0, pgroup))?;
         }
 
+        if self.get_setsid() {
+            cvt(libc::setsid())?;
+        }
+
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
@@ -739,6 +743,14 @@ impl Command {
                     default_set.as_ptr(),
                 ))?;
                 flags |= libc::POSIX_SPAWN_SETSIGDEF;
+            }
+
+            if self.get_setsid() {
+                if cfg!(target_os = "linux") {
+                    flags |= libc::POSIX_SPAWN_SETSID;
+                } else {
+                    return Ok(None);
+                }
             }
 
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
